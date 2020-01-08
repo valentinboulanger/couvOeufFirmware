@@ -223,5 +223,10 @@ void emergencyStop(){
   useTempHum = 0;
   useBluetooth = 0;
   useIncubation = 0;
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("  NOW  STOPPED");
+  lcd.setCursor(0,1);
+  lcd.print("Reset to restart");
   Serial.println("> The incubator has been stopped");
 }
