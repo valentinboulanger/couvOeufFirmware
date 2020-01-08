@@ -26,6 +26,9 @@ bool lcdPower = 0;
 unsigned int menuActive = 0;
 unsigned int selection = 1;
 bool door = false;
+byte upArrow[8]={ B00100, B01110, B11111, B01110, B01110, B01110, B01110, B01110 };
+byte downArrow[8]={ B01110, B01110, B01110, B01110, B01110, B11111, B01110, B00100 };
+byte egg[8]={ B00000, B00100, B01110, B10111, B11101, B11111, B11011, B01110 };
 
 void initializeIR(){
   //Initialize the IR receiver
@@ -39,6 +42,9 @@ void initializeLCD(){
   lcd.init();
   lcd.noDisplay();
   lcd.noBacklight();
+  lcd.createChar(0, upArrow);
+  lcd.createChar(1, downArrow);
+  lcd.createChar(2, egg);
 }
 
 void initializeBT(){
@@ -91,7 +97,8 @@ void interceptCommands(){
         String location = (selection <= 9) ? ("0" + String(selection)) : String(selection);
         lcd.print("Location " + location);
         lcd.setCursor(0,1);
-        lcd.print("Please wait...");
+        lcd.write(2);
+        lcd.print(" Please wait...");
       }
       if(menuActive == 3) { addEgg(selection); refreshDisplay(0); }
       else if(menuActive == 4) { deleteEgg(selection); refreshDisplay(0); }
@@ -140,10 +147,21 @@ void refreshDisplay(int menu){
   }
   else if(menu == 1 || menu == 3 || menu == 4){
     lcd.setCursor(0,0);
-    lcd.print("What's location");
-    lcd.setCursor(0,1);
-    if(selection == 10) lcd.print("       10");
-    else lcd.print("       0" + String(selection));
+    lcd.print("What's  location");
+    lcd.setCursor(5,1);
+    if(selection == 10){
+      lcd.print("  10 ");
+      lcd.write(1);
+    }
+    else if(selection == 1){
+      lcd.write(0);
+      lcd.print(" 01  ");
+    }
+    else{
+      lcd.write(0);
+      lcd.print(" 0" + String(selection) + " ");
+      lcd.write(1);
+    }
   }
   menuActive = menu;
 }
@@ -156,7 +174,8 @@ void refreshMenuIncubation(){
     if(inc[selection-1] == -1){
       lcd.print("Location " + location);
       lcd.setCursor(0,1);
-      lcd.print("EMPTY");
+      lcd.write(2);
+      lcd.print(" EMPTY");
     }
     else{
       unsigned long int data = temp[selection-1] + inc[selection-1];
@@ -165,7 +184,8 @@ void refreshMenuIncubation(){
       else if(percent >= 10) lcd.print("Location " + location + "  " + String(percent) + "%");
       else if(percent < 10) lcd.print("Location " + location + "   " + String(percent) + "%");
       lcd.setCursor(0,1);
-      lcd.print(String(data) + "s");
+      lcd.write(2);
+      lcd.print(" " + String(data) + "s");
     }
   }
 }
