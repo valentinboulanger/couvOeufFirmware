@@ -6,6 +6,7 @@
 
 extern bool useSD;
 extern int inc[10];
+extern long temp[10];
 extern bool eggPresent;
 extern bool useIncubation;
 extern File file;

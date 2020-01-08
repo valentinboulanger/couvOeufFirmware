@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include <Interval.h>
 #include "sdCard.h"
+#include "com.h"
 
 /*USER SETTINGS*/
 bool useSD = 1;
@@ -48,6 +49,7 @@ void controlIncubation(){
     for(int i = 0; i <= 9; i++){
       if(inc[i] != -1) inc[i] += (incubationInterval.value()/1000);
     }
+    refreshMenuIncubation();
   }
   digitalWrite(LED_BUILTIN, LOW);
 }

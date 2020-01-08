@@ -1,6 +1,8 @@
 /*This file contains the functions that control the bluetooth module, the IR receiver and the door sensor*/
 #include <IRremote.h>
 #include <SoftwareSerial.h>
+#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
 #include <Interval.h>
 #include "com.h"
 #include "regulation.h"
@@ -14,15 +16,17 @@ bool useDoorSensor = 1;
 #define modeLed 12 //The LED which indicates that the mode key is active
 #define doorSensor 7 //The pin where the sensor limit of the door is attached. Default wiring : status on D7
 #define receiver 5 //The pin where the IR receiver is attached. Default wiring : data on D5
-Interval resetModesInterval(3000); //Delay to press a target egg on the remote
+Interval refreshIncubationScreen(1000); //Delay to press a target egg on the remote
 Interval updateInterval(5000); //Delay between each refresh on the Couv'Oeuf application
 
 /*PROGRAM SETTINGS*/
 SoftwareSerial bt (TX_BLUETOOTH, RX_BLUETOOTH);
+LiquidCrystal_I2C lcd(0x27,16,2 );  // set the LCD address to 0x27 for a 16 chars and 2 line display
 IRrecv ir(receiver);
 decode_results resultsIr;
-bool additionMode = 0;
-bool deletionMode = 0;
+bool lcdPower = 0;
+unsigned int menuActive = 0;
+unsigned int selection = 1;
 bool door = false;
 
 void initializeIR(){
@@ -34,6 +38,12 @@ void initializeIR(){
   //Initialize the mode LED
   pinMode(modeLed, OUTPUT);
   digitalWrite(modeLed, LOW);
+}
+
+void initializeLCD(){
+  lcd.init();
+  lcd.noDisplay();
+  lcd.noBacklight();
 }
 
 void initializeBT(){
@@ -66,37 +76,96 @@ void interceptCommands(){
   if(ir.decode(&resultsIr)){
     long unsigned int result = resultsIr.value;
     digitalWrite(LED_BUILTIN, HIGH);
-    if(result == 0xFF629D) emergencyStop();
-    else if(result == 0xFF22DD) Serial.println("> Display page 1\n");
-    else if(result == 0xFF02FD) Serial.println("> Display page 2\n");
-    else if(result == 0xFFC23D) Serial.println("> Display page 3\n");
-    else if(result == 0xFFA857) backup();
-    else if(result == 0xFF4AB5 && additionMode == true) { addEgg(1); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF4AB5 && deletionMode == true) { deleteEgg(1); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF6897 && additionMode == true) { addEgg(2); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF6897 && deletionMode == true) { deleteEgg(2); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF9867 && additionMode == true) { addEgg(3); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF9867 && deletionMode == true) { deleteEgg(3); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFFB04F && additionMode == true) { addEgg(4); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFFB04F && deletionMode == true) { deleteEgg(4); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF30CF && additionMode == true) { addEgg(5); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF30CF && deletionMode == true) { deleteEgg(5); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF18E7 && additionMode == true) { addEgg(6); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF18E7 && deletionMode == true) { deleteEgg(6); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF7A85 && additionMode == true) { addEgg(7); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF7A85 && deletionMode == true) { deleteEgg(7); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF10EF && additionMode == true) { addEgg(8); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF10EF && deletionMode == true) { deleteEgg(8); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF38CF && additionMode == true) { addEgg(9); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF38CF && deletionMode == true) { deleteEgg(9); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF5AA5 && additionMode == true) { addEgg(10); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF5AA5 && deletionMode == true) { deleteEgg(10); additionMode = false; deletionMode = false; digitalWrite(modeLed, LOW); }
-    else if(result == 0xFF42BD) { deletionMode = false; additionMode = true; digitalWrite(modeLed, HIGH); }
-    else if(result == 0xFF52AD) { additionMode = false; deletionMode = true; digitalWrite(modeLed, HIGH); }
+  
+    if(result == 0xFF42BD) emergencyStop();
     else if(result == 0xFF45FA) displayData();
+    else if(result == 0xFF52AD) backup();
+    //Wake up the screen when a key is pressed
+    else if(result && !lcdPower) { refreshDisplay(0); }
+    //Switch off the screen when the 0 key is pressed
+    else if(result == 0xFF4AB5 && lcdPower && menuActive == 0) { refreshDisplay(-1); }
+    //Return to the home menu when the 0 key is pressed
+    else if(result == 0xFF4AB5 && lcdPower && menuActive != 0) { refreshDisplay(0); }
+
+    //OK button
+    else if(result == 0xFF02FD && lcdPower && menuActive) { 
+      if(menuActive == 1){
+        menuActive = selection*10;
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("Location " + String(selection));
+        lcd.setCursor(0,1);
+        lcd.print("Please wait...");
+      }
+      if(menuActive == 3) { addEgg(selection); refreshDisplay(0); }
+      else if(menuActive == 4) { deleteEgg(selection); refreshDisplay(0); }
+    }
+    //Menu 1
+    else if(result == 0xFF6897 && lcdPower && !menuActive) { selection = 1; refreshDisplay(1); }
+    //Menu 2
+    else if(result ==  0xFF9867 && lcdPower && !menuActive) { refreshDisplay(2); }
+    //Menu 3
+    else if(result ==  0xFFB04F && lcdPower && !menuActive) { selection = 1; refreshDisplay(3); }
+    //Menu 4
+    else if(result == 0xFF30CF && lcdPower && !menuActive) { selection = 1; refreshDisplay(4); }    
+    //Up arrow
+    else if(result == 0xFF629D && lcdPower) { if(selection >= 10) { selection = 10; } else { selection++; } refreshDisplay(menuActive); }
+    //Down arrow
+    else if(result == 0xFFA857 && lcdPower) { if(selection <= 1) { selection = 1; } else { selection--; } refreshDisplay(menuActive); }
     ir.resume();
   }
   digitalWrite(LED_BUILTIN, LOW);
+}
+
+void refreshDisplay(int menu){
+  if(menu == -1){
+    lcd.noDisplay();
+    lcd.noBacklight();
+    lcdPower = false;
+  }
+  else{
+    lcd.clear();
+    lcd.display();
+    lcd.backlight();
+    lcdPower = true;
+  }
+  if(menu == 0){
+    lcd.setCursor(0,0);
+    lcd.print("1|Eggs  2|Device");
+    lcd.setCursor(0,1);
+    lcd.print("3|+Egg    4|-Egg");
+  }
+  else if(menu == 2){
+    lcd.setCursor(0,0);
+    lcd.print("T:" + String(saveTemperature) + "C   DOOR");
+    lcd.setCursor(0,1);
+    if(door) lcd.print("H:" + String(saveHumidity) + "%   OPEN");
+    else lcd.print("H:" + String(saveHumidity) + "%  CLOSED");
+  }
+  else if(menu == 1 || menu == 3 || menu == 4){
+    lcd.setCursor(0,0);
+    lcd.print("What's location");
+    lcd.setCursor(0,1);
+    if(selection == 10) lcd.print("       10");
+    else lcd.print("       0" + String(selection));
+  }
+  menuActive = menu;
+}
+
+void refreshMenuIncubation(){
+  if(menuActive >= 10){
+    unsigned long int data = temp[selection-1] + inc[selection-1];
+    unsigned int percent = (100*data)/1814400;
+    String location = (selection <= 9) ? location = "0" + String(selection) : location = String(selection);
+    lcd.clear();
+    lcd.setCursor(0,0);
+    if(percent >= 100) lcd.print("Location " + location + " " + String(percent) + "%");
+    else if(percent >= 10) lcd.print("Location " + location + "  " + String(percent) + "%");
+    else lcd.print("Location " + location + "   " + String(percent) + "%");
+    lcd.setCursor(0,1);
+    if(inc[selection-1] == -1) lcd.print("EMPTY");
+    else lcd.print(String(data) + "s");
+  }
 }
 
 void checkDoor(){
@@ -132,19 +201,9 @@ void updateApplication(){
 void doorStatus(bool stat){
   digitalWrite(LED_BUILTIN, HIGH);
   //Update the door status
-  if(stat) { door = true; Serial.println("> WARNING : The door is now open ! Close the door to maintain internal temperature !\n"); bt.write('o'); }
-  else { door = false; Serial.println("> The door is now closed !\n"); bt.write('f'); }
-  digitalWrite(LED_BUILTIN, LOW);
-}
-
-//Reset the add and remove key on the remote
-void resetModes(){
-  if(resetModesInterval.isElapsed()){
-    digitalWrite(LED_BUILTIN, HIGH);
-    additionMode = false;
-    deletionMode = false;    
-    digitalWrite(modeLed, LOW);
-  }
+  if(stat) { Serial.println("> WARNING : The door is now open ! Close the door to maintain internal temperature !\n"); bt.write('o');}
+  else { Serial.println("> The door is now closed !\n"); bt.write('f'); }
+  if(menuActive == 2) refreshDisplay(2); //Update the device infos page if active
   digitalWrite(LED_BUILTIN, LOW);
 }
 

@@ -3,6 +3,7 @@
 #include <Servo.h>
 #include <Interval.h>
 #include "regulation.h"
+#include "com.h"
 
 /*USER SETTINGS*/
 bool useFan = 1;
@@ -62,6 +63,7 @@ void controlTemperature(){
       digitalWrite(thermistor, LOW);}
     else {
       //Else, values are saved
+      if(menuActive == 2) refreshDisplay(2); //Update the device infos page if active
       //Check if we need to activate the heating
       if (saveTemperature > finalTemperature + thresholdTemperature)  {
         //We deactivate the heating

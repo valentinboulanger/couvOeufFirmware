@@ -29,6 +29,7 @@ void setup() {
 
   //IR communication
   initializeIR();
+  initializeLCD();
   
   //Bluetooth module
   if(useBluetooth) initializeBT();
@@ -42,13 +43,12 @@ void setup() {
 
 void loop() {
   interceptCommands();
-  resetModes();
+  if(useDoorSensor) checkDoor();
   if(eggPresent){
     if(useTempHum) controlTemperature();
     if(useReturnServo) eggsReturn();
     if(useIncubation) controlIncubation();
     if(useSD) backup();
-    if(useDoorSensor) checkDoor();
     if(useBluetooth) updateApplication();
   }
 }
