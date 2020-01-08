@@ -13,10 +13,8 @@ bool useBluetooth = 1;
 bool useDoorSensor = 1;
 #define RX_BLUETOOTH 11 //The pin where the RX pin of the bluetooth module is attached. Default wiring : RX on D11
 #define TX_BLUETOOTH 10 //The pin where the TX pin of the bluetooth module is attached. Default wiring : TX on D10
-#define modeLed 12 //The LED which indicates that the mode key is active
 #define doorSensor 7 //The pin where the sensor limit of the door is attached. Default wiring : status on D7
 #define receiver 5 //The pin where the IR receiver is attached. Default wiring : data on D5
-Interval refreshIncubationScreen(1000); //Delay to press a target egg on the remote
 Interval updateInterval(5000); //Delay between each refresh on the Couv'Oeuf application
 
 /*PROGRAM SETTINGS*/
@@ -35,9 +33,6 @@ void initializeIR(){
   ir.enableIRIn();
   ir.blink13(true);
   Serial.println("OK !\n");
-  //Initialize the mode LED
-  pinMode(modeLed, OUTPUT);
-  digitalWrite(modeLed, LOW);
 }
 
 void initializeLCD(){
