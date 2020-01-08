@@ -22,7 +22,7 @@ SoftwareSerial bt (TX_BLUETOOTH, RX_BLUETOOTH);
 LiquidCrystal_I2C lcd(0x27,16,2 );  // set the LCD address to 0x27 for a 16 chars and 2 line display
 IRrecv ir(receiver);
 decode_results resultsIr;
-bool lcdPower = 0;
+bool lcdPower = false;
 unsigned int menuActive = 0;
 unsigned int selection = 1;
 bool door = false;
@@ -42,6 +42,7 @@ void initializeLCD(){
   lcd.init();
   lcd.noDisplay();
   lcd.noBacklight();
+  lcdPower = false;
   lcd.createChar(0, upArrow);
   lcd.createChar(1, downArrow);
   lcd.createChar(2, egg);
@@ -77,17 +78,19 @@ void interceptCommands(){
   if(ir.decode(&resultsIr)){
     long unsigned int result = resultsIr.value;
     digitalWrite(LED_BUILTIN, HIGH);
-  
-    if(result == 0xFF42BD) emergencyStop();
-    else if(result == 0xFF45FA) displayData();
-    else if(result == 0xFF52AD) backup();
-    //Wake up the screen when a key is pressed
-    else if(result && !lcdPower) { refreshDisplay(0); }
-    //Switch off the screen when the 0 key is pressed
-    else if(result == 0xFF4AB5 && lcdPower && menuActive == 0) { refreshDisplay(-1); }
-    //Return to the home menu when the 0 key is pressed
-    else if(result == 0xFF4AB5 && lcdPower && menuActive != 0) { refreshDisplay(0); }
 
+    //Stop the incubator when the * key is pressed
+    if(result == 0xFF42BD) emergencyStop();
+    //Debug data when the special key is pressed
+    else if(result == 0xFF45FA) displayData();
+    //Backup when the 5 key is pressed
+    else if(result == 0xFF18E7) backup();
+    //Wake up the screen when a key is pressed
+    else if(result && !lcdPower) { lcdPower = true; refreshDisplay(0); }
+    //Return to the home menu when the 0 key is pressed
+    else if(result == 0xFF4AB5 && lcdPower && menuActive != 0){ refreshDisplay(0); }
+    //Switch off the screen when the # key is pressed
+    else if(result == 0xFF52AD && lcdPower){ lcd.noDisplay(); lcd.noBacklight(); lcdPower = false;  delay(110);}
     //OK button
     else if(result == 0xFF02FD && lcdPower && menuActive) { 
       if(menuActive == 1){
@@ -97,11 +100,25 @@ void interceptCommands(){
         String location = (selection <= 9) ? ("0" + String(selection)) : String(selection);
         lcd.print("Location " + location);
         lcd.setCursor(0,1);
-        lcd.write(2);
-        lcd.print(" Please wait...");
+        lcd.write(2);    
+        if(inc[selection-1] == -1) lcd.print(" EMPTY");
+        else lcd.print(" Please wait...");
       }
-      if(menuActive == 3) { addEgg(selection); refreshDisplay(0); }
-      else if(menuActive == 4) { deleteEgg(selection); refreshDisplay(0); }
+      if(menuActive == 3) { 
+        addEgg(selection); 
+        lcd.clear();
+        lcd.setCursor(7,0);
+        lcd.write(2);
+        lcd.setCursor(2,1);
+        lcd.print("Egg added !");
+      }
+      else if(menuActive == 4) { deleteEgg(selection); 
+        lcd.clear();
+        lcd.setCursor(7,0);
+        lcd.write(2);
+        lcd.setCursor(1,1);
+        lcd.print("Egg deleted !");
+      }
     }
     //Menu 1
     else if(result == 0xFF6897 && lcdPower && !menuActive) { selection = 1; refreshDisplay(1); }
@@ -115,22 +132,22 @@ void interceptCommands(){
     else if(result == 0xFF629D && lcdPower) { if(selection >= 10) { selection = 10; } else { selection++; } refreshDisplay(menuActive); }
     //Down arrow
     else if(result == 0xFFA857 && lcdPower) { if(selection <= 1) { selection = 1; } else { selection--; } refreshDisplay(menuActive); }
+    //Switch off the screen when the 0 key is pressed
+    //else refreshDisplay(-1);
     ir.resume();
   }
   digitalWrite(LED_BUILTIN, LOW);
 }
 
 void refreshDisplay(int menu){
+  lcd.clear();
   if(menu == -1){
     lcd.noDisplay();
     lcd.noBacklight();
-    lcdPower = false;
   }
   else{
-    lcd.clear();
     lcd.display();
     lcd.backlight();
-    lcdPower = true;
   }
   if(menu == 0){
     lcd.setCursor(0,0);
