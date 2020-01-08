@@ -27,7 +27,7 @@ void setup() {
   //Servomotor
   if(useReturnServo) initializeServo();
 
-  //IR communication
+  //IR communication and LCD
   initializeIR();
   initializeLCD();
   

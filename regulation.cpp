@@ -60,7 +60,8 @@ void controlTemperature(){
     //If the returned values are not numbers, there was an error
     if(isnan(saveTemperature) || isnan(saveHumidity)) {
       Serial.println("> An error has occured while measuring temperature and humidity !\n");
-      digitalWrite(thermistor, LOW);}
+      digitalWrite(thermistor, LOW);
+    }
     else {
       //Else, values are saved
       if(menuActive == 2) refreshDisplay(2); //Update the device infos page if active

@@ -88,7 +88,8 @@ void interceptCommands(){
         menuActive = selection*10;
         lcd.clear();
         lcd.setCursor(0,0);
-        lcd.print("Location " + String(selection));
+        String location = (selection <= 9) ? ("0" + String(selection)) : String(selection);
+        lcd.print("Location " + location);
         lcd.setCursor(0,1);
         lcd.print("Please wait...");
       }
@@ -149,17 +150,23 @@ void refreshDisplay(int menu){
 
 void refreshMenuIncubation(){
   if(menuActive >= 10){
-    unsigned long int data = temp[selection-1] + inc[selection-1];
-    unsigned int percent = (100*data)/1814400;
-    String location = (selection <= 9) ? location = "0" + String(selection) : location = String(selection);
     lcd.clear();
     lcd.setCursor(0,0);
-    if(percent >= 100) lcd.print("Location " + location + " " + String(percent) + "%");
-    else if(percent >= 10) lcd.print("Location " + location + "  " + String(percent) + "%");
-    else lcd.print("Location " + location + "   " + String(percent) + "%");
-    lcd.setCursor(0,1);
-    if(inc[selection-1] == -1) lcd.print("EMPTY");
-    else lcd.print(String(data) + "s");
+    String location = (selection <= 9) ? ("0" + String(selection)) : String(selection);
+    if(inc[selection-1] == -1){
+      lcd.print("Location " + location);
+      lcd.setCursor(0,1);
+      lcd.print("EMPTY");
+    }
+    else{
+      unsigned long int data = temp[selection-1] + inc[selection-1];
+      unsigned int percent = (100*data)/1814400;
+      if(percent >= 100) lcd.print("Location " + location + " " + String(percent) + "%");
+      else if(percent >= 10) lcd.print("Location " + location + "  " + String(percent) + "%");
+      else if(percent < 10) lcd.print("Location " + location + "   " + String(percent) + "%");
+      lcd.setCursor(0,1);
+      lcd.print(String(data) + "s");
+    }
   }
 }
 
