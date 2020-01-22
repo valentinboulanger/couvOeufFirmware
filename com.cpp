@@ -132,8 +132,8 @@ void interceptCommands(){
     else if(result == 0xFF629D && lcdPower) { if(selection >= 10) { selection = 10; } else { selection++; } refreshDisplay(menuActive); }
     //Down arrow
     else if(result == 0xFFA857 && lcdPower) { if(selection <= 1) { selection = 1; } else { selection--; } refreshDisplay(menuActive); }
-    //Switch off the screen when the 0 key is pressed
-    //else refreshDisplay(-1);
+    //Left Arrow
+    if(result == 0xFF22DD && lcdPower && menuActive >= 10 && selection > 1){ selection--; menuActive = selection*10; }
     ir.resume();
   }
   digitalWrite(LED_BUILTIN, LOW);
@@ -251,8 +251,8 @@ void emergencyStop(){
   Serial.println("> Stopping all functions...");
   if(useReturnServo) myServo.detach();
   if(useSD) file.close();
-  if(useFan) digitalWrite(fan, LOW);
-  if(useTempHum) digitalWrite(thermistor, LOW);
+  if(useFan) digitalWrite(fan, HIGH);
+  if(useTempHum) digitalWrite(thermistor, HIGH);
   useFan = 0;
   useSD = 0;
   useReturnServo = 0;

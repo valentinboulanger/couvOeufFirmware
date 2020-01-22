@@ -4,6 +4,7 @@
 #include <Interval.h>
 #include "regulation.h"
 #include "com.h"
+#include "sdCard.h"
 
 /*USER SETTINGS*/
 bool useFan = 1;
@@ -34,12 +35,14 @@ void initializeTempHum(){
   Serial.print("> Initializing temperature & humidity sensor..........");
   dht.begin();
   pinMode(thermistor, OUTPUT);
+  digitalWrite(thermistor, HIGH);
   Serial.println("OK !\n");
 }
 
 void initializeFan(){
   Serial.print("> Initializing the fan..........");
   pinMode(fan, OUTPUT);
+  digitalWrite(fan, HIGH);
   Serial.println("OK !\n");
 }
 
@@ -60,35 +63,38 @@ void controlTemperature(){
     //If the returned values are not numbers, there was an error
     if(isnan(saveTemperature) || isnan(saveHumidity)) {
       Serial.println("> An error has occured while measuring temperature and humidity !\n");
-      digitalWrite(thermistor, LOW);
+      digitalWrite(thermistor, HIGH);
     }
     else {
       //Else, values are saved
       if(menuActive == 2) refreshDisplay(2); //Update the device infos page if active
       //Check if we need to activate the heating
-      if (saveTemperature > finalTemperature + thresholdTemperature)  {
+      if(eggPresent){
+        if (saveTemperature > finalTemperature + thresholdTemperature)  {
         //We deactivate the heating
         Serial.println("> Temperature too high (>" + String(finalTemperature) + ") ! Deactivate the heating...\n");
-        digitalWrite(thermistor, LOW);
+        digitalWrite(thermistor, HIGH);
+        }
+        if (saveTemperature < finalTemperature - thresholdTemperature)  {
+         //We activate the heating
+         Serial.println("> Temperature too low (<" + String(finalTemperature) + ") ! Activate the heating...\n");
+         digitalWrite(thermistor, LOW);
+       }
+       //Check if we need to activate the fan
+       if(useFan){
+          if (saveHumidity > finalHumidity - thresholdHumidity)  {
+           //We activate the fan
+           Serial.println("> Humidity too high (>" + String(finalHumidity) + ") ! Activate the fan...\n");
+           digitalWrite(fan, LOW);
+         }
+         else{
+           //We deactivate the fan
+           Serial.println("> Humidity correct (<" + String(finalHumidity) + ") ! Deactivate the fan...\n");
+           digitalWrite(fan, HIGH);
+         }
+       }
       }
-      if (saveTemperature < finalTemperature - thresholdTemperature)  {
-       //We activate the heating
-       Serial.println("> Temperature too low (<" + String(finalTemperature) + ") ! Activate the heating...\n");
-       digitalWrite(thermistor, HIGH);
-     }
-     //Check if we need to activate the fan
-     if(useFan){
-        if (saveHumidity > finalHumidity - thresholdHumidity)  {
-         //We activate the fan
-         Serial.println("> Humidity too high (>" + String(finalHumidity) + ") ! Activate the fan...\n");
-         digitalWrite(fan, HIGH);
-       }
-       else{
-         //We deactivate the fan
-         Serial.println("> Humidity correct (<" + String(finalHumidity) + ") ! Deactivate the fan...\n");
-         digitalWrite(fan, LOW);
-       }
-     }
+      
     }
   }
   digitalWrite(LED_BUILTIN, LOW);

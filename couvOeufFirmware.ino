@@ -44,8 +44,8 @@ void setup() {
 void loop() {
   interceptCommands();
   if(useDoorSensor) checkDoor();
+  if(useTempHum) controlTemperature();
   if(eggPresent){
-    if(useTempHum) controlTemperature();
     if(useReturnServo) eggsReturn();
     if(useIncubation) controlIncubation();
     if(useSD) backup();
