@@ -20,7 +20,7 @@ bool useReturnServo = 1;
 #define fan 12 //The pin where the fan is attached. Default wiring : relay on D12
 #define servo 11  //The pin where the servomotor is attached
 #define angle 45 //Angle needed to return the eggs
-Interval returnInterval(3000); //Delay between two reversals
+Interval returnInterval(10000); //Delay between two reversals
 Interval measureInterval(5000); //Delay between two measurements
 
 /*PROGRAM SETTINGS*/
@@ -50,6 +50,7 @@ void initializeServo(){
   Serial.print("> Initializing the servomotor..........");
   myServo.attach(servo);
   myServo.write(0);
+  myServo.detach();
   Serial.println("OK !\n");
 }
 
@@ -64,6 +65,7 @@ void controlTemperature(){
     if(isnan(saveTemperature) || isnan(saveHumidity)) {
       Serial.println("> An error has occured while measuring temperature and humidity !\n");
       digitalWrite(thermistor, HIGH);
+      if(useFan) digitalWrite(fan, HIGH);
     }
     else {
       //Else, values are saved
@@ -71,30 +73,18 @@ void controlTemperature(){
       //Check if we need to activate the heating
       if(eggPresent){
         if (saveTemperature > finalTemperature + thresholdTemperature)  {
-        //We deactivate the heating
+        //We deactivate the heating and the fan
         Serial.println("> Temperature too high (>" + String(finalTemperature) + ") ! Deactivate the heating...\n");
         digitalWrite(thermistor, HIGH);
+        if(useFan) digitalWrite(fan, HIGH);
         }
         if (saveTemperature < finalTemperature - thresholdTemperature)  {
-         //We activate the heating
+         //We activate the heating and the fan
          Serial.println("> Temperature too low (<" + String(finalTemperature) + ") ! Activate the heating...\n");
          digitalWrite(thermistor, LOW);
-       }
-       //Check if we need to activate the fan
-       if(useFan){
-          if (saveHumidity > finalHumidity - thresholdHumidity)  {
-           //We activate the fan
-           Serial.println("> Humidity too high (>" + String(finalHumidity) + ") ! Activate the fan...\n");
-           digitalWrite(fan, LOW);
-         }
-         else{
-           //We deactivate the fan
-           Serial.println("> Humidity correct (<" + String(finalHumidity) + ") ! Deactivate the fan...\n");
-           digitalWrite(fan, HIGH);
-         }
+         if(useFan) digitalWrite(fan, LOW);
        }
       }
-      
     }
   }
   digitalWrite(LED_BUILTIN, LOW);
@@ -103,19 +93,21 @@ void controlTemperature(){
 //Return the eggs with the servomotor
 void eggsReturn(){
   //Return eggs with the servomotor
-  myServo.attach(servo);
   if(returnInterval.isElapsed()){
     digitalWrite(LED_BUILTIN, HIGH);
     //Retournement phase 1
     if(returnPhase){
+     myServo.attach(servo);
      myServo.write(angle); 
+     myServo.detach();
      returnPhase = false;
     }
     else{
+      myServo.attach(servo);
       myServo.write(0);
+      myServo.detach();
       returnPhase = true;
     }
-    myServo.detach();
   }
   digitalWrite(LED_BUILTIN, LOW);
 }
