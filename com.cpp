@@ -212,8 +212,8 @@ void checkDoor(){
   If the door sensor return 0 and the door was opened -> the door is now closed*/
   digitalWrite(LED_BUILTIN, HIGH);
   bool sensor = !digitalRead(doorSensor);
-  if(sensor && !door) { door = true; doorStatus(true); }
-  else if(!sensor && door) { door = false; doorStatus(false); }
+  if(sensor && !door) { doorStatus(true); }
+  else if(!sensor && door) { doorStatus(false); }
   digitalWrite(LED_BUILTIN, LOW);
 }
 
@@ -240,6 +240,7 @@ void updateApplication(){
 void doorStatus(bool stat){
   digitalWrite(LED_BUILTIN, HIGH);
   //Update the door status
+  door = stat;
   if(stat) { Serial.println("> WARNING : The door is now open ! Close the door to maintain internal temperature !\n"); bt.write('o');}
   else { Serial.println("> The door is now closed !\n"); bt.write('f'); }
   if(menuActive == 2) refreshDisplay(2); //Update the device infos page if active

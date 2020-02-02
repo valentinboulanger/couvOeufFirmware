@@ -1,6 +1,7 @@
 #include <LiquidCrystal_I2C.h>
 extern bool useDoorSensor;
 extern bool useBluetooth;
+extern bool door;
 extern unsigned int menuActive;
 extern LiquidCrystal_I2C lcd;
 

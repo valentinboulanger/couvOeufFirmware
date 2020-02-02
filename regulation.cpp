@@ -72,7 +72,7 @@ void controlTemperature(){
       if(menuActive == 2) refreshDisplay(2); //Update the device infos page if active
       //Check if we need to activate the heating
       if(eggPresent){
-        if (saveTemperature > finalTemperature + thresholdTemperature)  {
+        if ((saveTemperature > finalTemperature + thresholdTemperature))  {
         //We deactivate the heating and the fan
         Serial.println("> Temperature too high (>" + String(finalTemperature) + ") ! Deactivate the heating...\n");
         digitalWrite(thermistor, HIGH);
@@ -80,9 +80,16 @@ void controlTemperature(){
         }
         if (saveTemperature < finalTemperature - thresholdTemperature)  {
          //We activate the heating and the fan
-         Serial.println("> Temperature too low (<" + String(finalTemperature) + ") ! Activate the heating...\n");
-         digitalWrite(thermistor, LOW);
-         if(useFan) digitalWrite(fan, LOW);
+         if(door) {
+          Serial.println("> Temperature too low (<" + String(finalTemperature) + ") ! Please close the door to activate the heating...\n");
+          digitalWrite(thermistor, HIGH);
+          if(useFan) digitalWrite(fan, HIGH);
+         }
+         else{
+          Serial.println("> Temperature too low (<" + String(finalTemperature) + ") ! Activate the heating...\n");
+          digitalWrite(thermistor, LOW);
+          if(useFan) digitalWrite(fan, LOW);
+         }
        }
       }
     }
